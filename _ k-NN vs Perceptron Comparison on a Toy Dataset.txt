@@ -1,0 +1,61 @@
+# Run: python P12_model_comparison.py
+# Library: none. Only plain Python 3
+
+import math
+
+# Toy Dataset: [Study_Hours, Attendance_Ratio], Label (1 = Pass, 0 = Fail)
+TRAIN_DATA = [
+    ([1.0, 0.4], 0), ([1.5, 0.5], 0), ([2.0, 0.3], 0), ([2.5, 0.6], 0),
+    ([4.0, 0.8], 1), ([4.5, 0.9], 1), ([5.0, 0.7], 1), ([6.0, 0.95], 1)
+]
+
+TEST_DATA = [
+    ([1.2, 0.45], 0),
+    ([2.2, 0.5], 0),
+    ([4.2, 0.85], 1),
+    ([5.5, 0.8], 1)
+]
+
+# 1. k-Nearest Neighbors (k=3)
+def predict_knn(x, k=3):
+    distances = []
+    for feat, label in TRAIN_DATA:
+        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(x, feat)))
+        distances.append((dist, label))
+    distances.sort(key=lambda item: item[0])
+    top_k = [label for _, label in distances[:k]]
+    return 1 if sum(top_k) > (k / 2) else 0
+
+# 2. Single-Layer Perceptron
+def train_perceptron(epochs=20, lr=0.1):
+    weights = [0.0, 0.0]
+    bias = 0.0
+    for _ in range(epochs):
+        for x, y in TRAIN_DATA:
+            z = sum(w * xi for w, xi in zip(weights, x)) + bias
+            pred = 1 if z >= 0 else 0
+            error = y - pred
+            weights = [w + lr * error * xi for w, xi in zip(weights, x)]
+            bias += lr * error
+    return weights, bias
+
+def predict_perceptron(x, weights, bias):
+    z = sum(w * xi for w, xi in zip(weights, x)) + bias
+    return 1 if z >= 0 else 0
+
+if __name__ == "__main__":
+    w, b = train_perceptron()
+    knn_correct = 0
+    perc_correct = 0
+
+    print("--- Model Comparison on Toy Exam Dataset ---")
+    for x, true_y in TEST_DATA:
+        p_knn = predict_knn(x, k=3)
+        p_perc = predict_perceptron(x, w, b)
+        knn_correct += int(p_knn == true_y)
+        perc_correct += int(p_perc == true_y)
+        print(f"Input={x} | Actual={true_y} | k-NN={p_knn} | Perceptron={p_perc}")
+
+    total = len(TEST_DATA)
+    print(f"\nk-NN Accuracy:       {(knn_correct / total) * 100:.1f}%")
+    print(f"Perceptron Accuracy: {(perc_correct / total) * 100:.1f}%")
